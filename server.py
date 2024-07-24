@@ -8,7 +8,7 @@ while True:
     client, address = server.accept()
     data = client.recv(1024).decode("utf-8")
     print(data)
-    path = data.split(' ')[1]
+    path = data.split()[1]
     if path == "/home":
         response = \
             "HTTP/1.1 200 OK\r\n" \
