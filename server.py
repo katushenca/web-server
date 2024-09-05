@@ -1,5 +1,5 @@
 import asyncio
-
+import logs
 
 def create_response(request):
     path = request.split()[1]
@@ -17,6 +17,7 @@ def read_html_file(file_path):
 
 async def work_with_client(reader, writer):
     client_request = (await reader.read(1024)).decode()
+    logs.log_http_request(client_request)
     print(f"Received: {client_request}")
 
     response_to_client = create_response(client_request)
