@@ -1,5 +1,10 @@
 import asyncio
 import logs
+import json
+
+
+with open('config.json', 'r') as config_file:
+    config = json.load(config_file)
 
 def create_response(request):
     path = request.split()[1]
@@ -16,20 +21,39 @@ def read_html_file(file_path):
 
 
 async def work_with_client(reader, writer):
-    client_request = (await reader.read(1024)).decode()
-    logs.log_http_request(client_request)
-    print(f"Received: {client_request}")
+    while True:
+        try:
+            client_request = (await reader.read(1024)).decode()
+            if not client_request:
+                break
+            logs.log_http_request(client_request)
+            print(f"Received: {client_request}")
 
-    response_to_client = create_response(client_request)
-    writer.write(response_to_client.encode())
+            response_to_client = create_response(client_request)
+            writer.write(response_to_client.encode())
+            await writer.drain()
+            if config["keep-alive"]["using"] != "true":
+                break
+            else:
+                if "Connection: keep-alive" in client_request:
+                    print("Keeping the connection alive")
+                    continue
+                else:
+                    print("Closing the connection")
+                    break
+        except asyncio.CancelledError:
+            break
 
-    print("Closing the connection")
     writer.close()
-    await writer.wait_closed() #ждем пока до конца не закроем клиентика
+    await writer.wait_closed()
 
 
 async def start_server():
-    server = await asyncio.start_server(work_with_client, '127.0.0.1', 5252)
+    server = await asyncio.start_server(
+        work_with_client,
+        config["server"]["host"],
+        config["server"]["port"]
+    )
     print("start server")
     async with server:
         print("cервер запущен навсегда")
