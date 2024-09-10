@@ -1,6 +1,7 @@
 import asyncio
 import logs
 import json
+import os
 
 
 with open('config.json', 'r') as config_file:
@@ -8,10 +9,13 @@ with open('config.json', 'r') as config_file:
 
 def create_response(request):
     path = request.split()[1]
+    html_content = ''
     if path == "/home" or path == "/lizka" :
         html_content = read_html_file(f"html files/{path}.html")
-    else:
+    elif path == '/':
         html_content = read_html_file("html files/hello.html")
+
+
     if html_content:
         return f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" \
                f"   {html_content}"
@@ -32,7 +36,7 @@ async def work_with_client(reader, writer):
     client_address = writer.get_extra_info('peername')[0]
     while True:
         try:
-            client_request = (await reader.read(1024)).decode()
+            client_request = (await reader.read(100)).decode()
             if not client_request:
                 break
 
@@ -70,6 +74,7 @@ async def start_server():
     async with server:
         print("cервер запущен навсегда")
         await server.serve_forever() # запускаем сервер до явного закрытия
+
 
 
 if __name__ == "__main__":
