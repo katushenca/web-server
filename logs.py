@@ -17,8 +17,6 @@ def parse_http_request(request):
     return method, url, http_version, headers
 
 
-def log_http_request(request):
+def log_http_request(request, ip, status):
     method, url, http_version, headers = parse_http_request(request)
-    logging.debug(f'{method} {url} {http_version}')
-    for key, value in headers.items():
-        logging.debug(f'{key}: {value}')
+    logging.debug(f'{ip} -- {method} {http_version} {status}')

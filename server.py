@@ -12,24 +12,36 @@ def create_response(request):
         html_content = read_html_file(f"html files/{path}.html")
     else:
         html_content = read_html_file("html files/hello.html")
-    return f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
+    if html_content:
+        return f"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" \
+               f"   {html_content}"
+    else:
+        return f"HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n" \
+               f"\r\n<h1>404 Not Found</h1>"
 
 
 def read_html_file(file_path):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        return file.read()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read()
+    except FileNotFoundError:
+        return None
 
 
 async def work_with_client(reader, writer):
+    client_address = writer.get_extra_info('peername')[0]
     while True:
         try:
             client_request = (await reader.read(1024)).decode()
             if not client_request:
                 break
-            logs.log_http_request(client_request)
+
             print(f"Received: {client_request}")
 
             response_to_client = create_response(client_request)
+            http_status = " ".join(response_to_client.split()[1:3])
+            print(http_status)
+            logs.log_http_request(client_request, client_address, http_status)
             writer.write(response_to_client.encode())
             await writer.drain()
             if config["keep-alive"]["using"] != "true":
