@@ -1,8 +1,7 @@
 import asyncio
 import logs
 import json
-import os
-
+import httpx
 
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
@@ -53,20 +52,21 @@ def create_response(request):
         response = f"HTTP/1.1 {status_code} Internal Server Error\r\nContent-Type: text/html\r\n\r\n{server_error_content if server_error_content else f'<h1>500 Internal Server Error: {e}</h1>'}"
         return status_code, response
 
+    # Отправляем запрос к целевому серверу
+    async with httpx.AsyncClient() as client:
+        response = await client.request(method, url, headers=headers_dict)
 
-def read_html_file(file_path):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            return file.read()
-    except FileNotFoundError:
-        return None
+    # Формируем ответ для клиента
+    response_headers = '\r\n'.join(f"{key}: {value}" for key, value in response.headers.items())
+    response_body = response.text
 
+    return f"HTTP/1.1 {response.status_code} {response.reason}\r\n{response_headers}\r\n\r\n{response_body}"
 
 async def work_with_client(reader, writer):
     client_address = writer.get_extra_info('peername')[0]
     while True:
         try:
-            client_request = (await reader.read(100)).decode()
+            client_request = (await reader.read(1024)).decode()
             if not client_request:
                 break
 
@@ -94,7 +94,6 @@ async def work_with_client(reader, writer):
 
     writer.close()
     await writer.wait_closed()
-
 
 async def start_server():
     server = await asyncio.start_server(
