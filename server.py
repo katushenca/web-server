@@ -1,7 +1,7 @@
 import asyncio
 import logs
 import json
-import httpx
+import ssl
 
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
@@ -94,12 +94,16 @@ async def work_with_client(reader, writer):
     await writer.wait_closed()
 
 async def start_server():
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
+
     server = await asyncio.start_server(
         work_with_client,
         config["server"]["host"],
-        config["server"]["port"]
+        config["server"]["port"],
+        ssl=ssl_context
     )
-    print("start server")
+    print("SSL-сервер запущен")
     async with server:
         print("cервер запущен навсегда")
         await server.serve_forever()
