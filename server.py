@@ -12,12 +12,19 @@ def read_html_file(file_path):
             return file.read()
     except FileNotFoundError:
         return None
+
 def create_response(request):
     path = request.split()[1]
     html_content = ''
     status_code = 200
 
     try:
+        if path.startswith("/other"):
+            html_content = read_html_file(f"html files/other.html")
+            response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
+            return status_code, response
+
+
         if path == "/home" or path == "/lizka":
             html_content = read_html_file(f"html files/{path}.html")
         elif path == '/':
@@ -29,13 +36,6 @@ def create_response(request):
             response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
             return status_code, response
 
-        if path.startswith("/redirect"):
-            status_code = 301
-            print(status_code)
-            redirect_content = read_html_file("html files/3xx.html")
-            response = f"HTTP/1.1 {status_code} Moved Permanently\r\nLocation: /home\r\nContent-Type: text/html\r\n\r\n{redirect_content if redirect_content else '<h1>301 Moved Permanently</h1>'}"
-            return status_code, response
-
         elif path.startswith("/forbidden"):
             status_code = 403
             forbidden_content = read_html_file("html files/403.html")
@@ -43,7 +43,6 @@ def create_response(request):
             return status_code, response
 
         elif path.startswith("/server_error"):
-
             raise ValueError("Intentional Server Error for testing")
 
         status_code = 404
@@ -56,8 +55,6 @@ def create_response(request):
         server_error_content = read_html_file("html files/5xx.html")
         response = f"HTTP/1.1 {status_code} Internal Server Error\r\nContent-Type: text/html\r\n\r\n{server_error_content if server_error_content else f'<h1>500 Internal Server Error: {e}</h1>'}"
         return status_code, response
-
-
 
 async def work_with_client(reader, writer):
     client_address = writer.get_extra_info('peername')[0]
@@ -93,22 +90,27 @@ async def work_with_client(reader, writer):
     writer.close()
     await writer.wait_closed()
 
-async def start_server():
+async def start_multiple_servers():
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain(certfile="cert.pem", keyfile="key.pem")
 
-    server = await asyncio.start_server(
+    server1 = await asyncio.start_server(
         work_with_client,
         config["server"]["host"],
-        config["server"]["port"],
+        443,
         ssl=ssl_context
     )
-    print("SSL-сервер запущен")
-    async with server:
-        print("cервер запущен навсегда")
-        await server.serve_forever()
 
+    server2 = await asyncio.start_server(
+        work_with_client,
+        config["server"]["host"],
+        8081,
+        #ssl=ssl_context
+    )
 
+    async with server1, server2:
+        await asyncio.gather(server1.serve_forever(), server2.serve_forever())
 
 if __name__ == "__main__":
-    asyncio.run(start_server())
+    asyncio.run(start_multiple_servers())
+
