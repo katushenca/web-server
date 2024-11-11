@@ -5,7 +5,6 @@ import ssl
 import os
 from pathlib import Path
 import directory_indexation_auto
-from typing import Tuple, Union
 
 
 with open('config.json', 'r') as config_file:
@@ -88,7 +87,7 @@ def get_directory_index(local_path):
         return "", 500
 
 
-REDIRECT_PATHS = ['/redirect1.html', '/redirect2.html']
+
 
 def get_host(request):
     for line in request.split('\r\n'):
@@ -96,24 +95,12 @@ def get_host(request):
             return line.split(':', 1)[1].strip()
     return 'localhost'
 
-def create_response(request: str) -> Tuple[int, Union[str, bytes]]:
+def create_response(request):
     path = request.split()[1]
     status_code = 200
     try:
-        if path in REDIRECT_PATHS:
-            host = get_host(request)
-            redirect_url = f"http://{host}:8081{path}"
-            response = (
-                "HTTP/1.1 302 Found\r\n"
-                f"Location: {redirect_url}\r\n"
-                "Content-Type: text/html\r\n"
-                "Content-Length: 0\r\n"
-                "\r\n"
-            )
-            return 302, response
         local_path = os.path.join(os.getcwd(), path.lstrip('/'))
         print(local_path, 'fsdfsdfs')
-
         if os.path.isdir(local_path):
             html_content, status_code = get_directory_index(local_path)
             response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
