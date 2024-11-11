@@ -2,9 +2,16 @@ import asyncio
 import logs
 import json
 import ssl
+import os, datetime
+import directory_indexation_auto
 
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
+
+
+import os
+
+
 
 def read_html_file(file_path):
     try:
@@ -19,18 +26,41 @@ def create_response(request):
     status_code = 200
 
     try:
+        local_path = os.path.join(os.getcwd(), path).split('/')[1]
+        print(local_path, 'fsdfsdfs')
+        if os.path.isdir(local_path):
+            html_content, status_code = directory_indexation_auto.generate_directory_index(local_path)
+            response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
+            return status_code, response
+        if os.path.isfile(local_path):
+            file_name = os.path.basename(local_path)
+            with open(local_path, 'rb') as file:
+                file_data = file.read()
+
+            response_headers = (
+                f"HTTP/1.1 200 OK\r\n"
+                f"Content-Type: application/octet-stream\r\n"
+                f"Content-Disposition: attachment; filename=\"{file_name}\"\r\n"
+                f"Content-Length: {len(file_data)}\r\n"
+                f"\r\n"
+            )
+            response = response_headers.encode('utf-8') + file_data
+            return 200, response
+
+
+
         if path.startswith("/other"):
-            html_content = read_html_file(f"html files/other.html")
+            html_content = read_html_file(f"html_files/other.html")
             response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
             return status_code, response
 
 
         if path == "/home" or path == "/lizka":
-            html_content = read_html_file(f"html files/{path}.html")
+            html_content = read_html_file(f"html_files/{path}.html")
         elif path == '/':
-            html_content = read_html_file("html files/hello.html")
+            html_content = read_html_file("html_files/hello.html")
         elif path == '/katya':
-            html_content = read_html_file("html files/katya.html")
+            html_content = read_html_file("html_files/katya.html")
 
         if html_content:
             response = f"HTTP/1.1 {status_code} OK\r\nContent-Type: text/html\r\n\r\n{html_content}"
@@ -38,7 +68,7 @@ def create_response(request):
 
         elif path.startswith("/forbidden"):
             status_code = 403
-            forbidden_content = read_html_file("html files/403.html")
+            forbidden_content = read_html_file("html_files/403.html")
             response = f"HTTP/1.1 {status_code} Forbidden\r\nContent-Type: text/html\r\n\r\n{forbidden_content}"
             return status_code, response
 
@@ -46,13 +76,13 @@ def create_response(request):
             raise ValueError("Intentional Server Error for testing")
 
         status_code = 404
-        not_found_content = read_html_file("html files/4xx.html")
+        not_found_content = read_html_file("html_files/4xx.html")
         response = f"HTTP/1.1 {status_code} Not Found\r\nContent-Type: text/html\r\n\r\n{not_found_content}"
         return status_code, response
 
     except Exception as e:
         status_code = 500
-        server_error_content = read_html_file("html files/5xx.html")
+        server_error_content = read_html_file("html_files/5xx.html")
         response = f"HTTP/1.1 {status_code} Internal Server Error\r\nContent-Type: text/html\r\n\r\n{server_error_content if server_error_content else f'<h1>500 Internal Server Error: {e}</h1>'}"
         return status_code, response
 
